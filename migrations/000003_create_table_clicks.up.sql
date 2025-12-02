@@ -1,0 +1,6 @@
+CREATE TABLE clicks (
+    id BIGSERIAL PRIMARY KEY,
+    short_link_id BIGINT NOT NULL REFERENCES short_links(id) ON DELETE CASCADE,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
