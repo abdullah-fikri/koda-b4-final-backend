@@ -13,7 +13,7 @@ func CorsMiddleware() gin.HandlerFunc {
     return cors.New(cors.Config{
         AllowOrigins: []string{
             frontEnd,
-            "http://localhost:5173",
+            "http://localhost:59556",
         },
         AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
         AllowHeaders: []string{"Content-Type", "Authorization"},
