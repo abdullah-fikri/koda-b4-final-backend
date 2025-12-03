@@ -4,6 +4,8 @@ import (
 	"backend/config"
 	"backend/utils"
 	"context"
+	"errors"
+	"time"
 )
 
 type RegisterRequest struct {
@@ -106,6 +108,67 @@ func UpdateUserPassword(email, hashedPassword string) error {
 	_, err := config.Db.Exec(ctx,
 		`UPDATE users SET password=$1 WHERE email=$2`,
 		hashedPassword, email,
+	)
+
+	return err
+}
+
+func SaveRefreshToken(userID int, refreshToken string) error {
+	ctx := context.Background()
+	tokenHash := utils.HashRefreshToken(refreshToken)
+	expiresAt := time.Now().Add(7 * 24 * time.Hour)
+
+	_, err := config.Db.Exec(ctx,
+		`INSERT INTO sessions (user_id, refresh_token_hash, expires_at)
+		 VALUES ($1, $2, $3)`,
+		userID, tokenHash, expiresAt,
+	)
+
+	return err
+}
+
+// ValidateRefreshToken cek apakah refresh token valid di database
+func ValidateRefreshToken(userID int, refreshToken string) error {
+	ctx := context.Background()
+	tokenHash := utils.HashRefreshToken(refreshToken)
+
+	var revokedAt *time.Time
+	var expiresAt time.Time
+
+	err := config.Db.QueryRow(ctx,
+		`SELECT revoked_at, expires_at
+		 FROM sessions
+		 WHERE user_id = $1 AND refresh_token_hash = $2`,
+		userID, tokenHash,
+	).Scan(&revokedAt, &expiresAt)
+
+	if err != nil {
+		return errors.New("refresh token not found")
+	}
+
+	// Cek apakah token sudah direvoke
+	if revokedAt != nil {
+		return errors.New("refresh token has been revoked")
+	}
+
+	// cek apakah token sudah expired
+	if time.Now().After(expiresAt) {
+		return errors.New("refresh token expired")
+	}
+
+	return nil
+}
+
+// RevokeRefreshToken revoke refresh token untuk logOut
+func RevokeRefreshToken(userID int, refreshToken string) error {
+	ctx := context.Background()
+	tokenHash := utils.HashRefreshToken(refreshToken)
+
+	_, err := config.Db.Exec(ctx,
+		`UPDATE sessions
+		 SET revoked_at = NOW()
+		 WHERE user_id = $1 AND refresh_token_hash = $2 AND revoked_at IS NULL`,
+		userID, tokenHash,
 	)
 
 	return err
