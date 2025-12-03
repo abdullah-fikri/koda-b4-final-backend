@@ -1,11 +1,13 @@
 package routes
 
 import (
+	"backend/middleware"
+
 	"github.com/gin-gonic/gin"
 )
 
 func Routes(r *gin.Engine){
-	// r.Use(middleware.CorsMiddleware())
+	r.Use(middleware.CorsMiddleware())
 	r.GET("/", func(ctx *gin.Context){
 		ctx.JSON(200, gin.H{
 			"success": true,
@@ -14,4 +16,7 @@ func Routes(r *gin.Engine){
 	})
 
 	AuthRoutes(r)
+	ShortLinkRouter(r)
+	UserShortLinkRouter(r)
+	UserRoutes(r)
 }
