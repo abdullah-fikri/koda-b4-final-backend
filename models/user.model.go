@@ -77,9 +77,9 @@ func UpdateUserModel(id int64, req UpdateUserRequest) (*User, error) {
 
     _, err := config.Db.Exec(ctx,
         `UPDATE profile 
-         SET username=$1, phone=$2,
-         WHERE users_id=$4`,
-        req.Username, req.Phone, id,
+         SET username=$1
+         WHERE users_id=$2`,
+        req.Username,id,
     )
     if err != nil {
         return nil, err
