@@ -15,6 +15,13 @@ import (
 )
 
 
+type RefreshRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+type LogoutRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
 
 func RegisterUser(ctx *gin.Context) {
 	var req models.RegisterRequest
@@ -178,3 +185,67 @@ func ResetPassword(c *gin.Context) {
 }
 
 
+
+// refresh token
+func RefreshTokenController(c *gin.Context) {
+    var body struct {
+        RefreshToken string `json:"refresh_token" binding:"required"`
+    }
+
+    if err := c.ShouldBindJSON(&body); err != nil {
+        c.JSON(400, gin.H{"message": "refresh_token is required"})
+        return
+    }
+
+    claims, err := utils.VerifyRefreshToken(body.RefreshToken)
+    if err != nil {
+        c.JSON(401, gin.H{"message": "invalid refresh token"})
+        return
+    }
+
+    // cek db
+    err = models.ValidateRefreshToken(claims.Id, body.RefreshToken)
+    if err != nil {
+        c.JSON(401, gin.H{"message": err.Error()})
+        return
+    }
+
+    newAccess := utils.GenerateAccessToken(claims.Id, claims.Role)
+
+    c.JSON(200, gin.H{
+        "success": true,
+        "message": "token refreshed",
+        "access_token": newAccess,
+    })
+}
+
+
+
+// logOut - revoke token
+func LogoutController(c *gin.Context) {
+	var body LogoutRequest
+
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(400, gin.H{"message": "refresh_token is required"})
+		return
+	}
+	
+	// verify token
+	claims, err := utils.VerifyRefreshToken(body.RefreshToken)
+	if err != nil {
+		c.JSON(401, gin.H{"message": "invalid refresh token"})
+		return
+	}
+
+	//revoke
+	err = models.RevokeRefreshToken(claims.Id, body.RefreshToken)
+	if err != nil {
+		c.JSON(500, gin.H{"message": "failed to logout"})
+		return
+	}
+
+	c.JSON(200, gin.H{
+		"success": true,
+		"message": "logout success",
+	})
+}
